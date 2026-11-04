@@ -1,0 +1,11 @@
+.env
+config.toml
+conversations.json
+conversations.json.tmp
+*.conversations.json
+data/
+usage*.csv
+_tmp_*/
+__pycache__/
+*.pyc
+.venv/

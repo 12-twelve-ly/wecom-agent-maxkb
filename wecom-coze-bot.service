@@ -1,0 +1,19 @@
+[Unit]
+Description=WeCom Smart Bot <-> MaxKB Relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/wecom-coze-bot
+ExecStart=/home/ubuntu/wecom-coze-bot/.venv/bin/python /home/ubuntu/wecom-coze-bot/bot.py
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+# 日志交给 journald，用 journalctl -u wecom-coze-bot -f 查看
+
+[Install]
+WantedBy=multi-user.target

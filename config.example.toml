@@ -1,0 +1,45 @@
+# 复制为 config.toml 后修改；密钥建议放在 .env，用 ${VAR} 引用。
+# 当前版本只支持一个 enabled bot；多机器人将在后续版本支持。
+
+[server]
+state_dir = "data"
+log_level = "INFO"
+
+[[bot]]
+name = "doris"
+enabled = true
+
+# 企微智能机器人（API 模式）的 Bot ID / Secret
+wecom_bot_id = "${WECOM_BOT_ID}"
+wecom_secret = "${WECOM_SECRET}"
+
+[bot.maxkb]
+# MaxKB 实例地址
+base_url = "http://localhost:8081"
+
+# 方式一：应用分享链接里的 access_token（默认）
+auth_mode = "share_token"
+access_token = "${MAXKB_ACCESS_TOKEN}"
+
+# 方式二：MaxKB 应用 API Key（application- 或 agent- 开头）
+# auth_mode = "api_key"
+# api_key = "${MAXKB_API_KEY}"
+# application_id 可选；填写后 usage_report.py 可直接使用
+# application_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+[bot.persona]
+display_name = "Doris 小助手"
+welcome = "你好，我是 {name}，直接发问题就行，也支持语音提问。发送「重置」可清除上下文重新开始。"
+menu = """**{name}使用说明**
+> 直接发送问题即可，支持语音/文字、多轮对话。
+>
+> **可用指令：**
+> `答题` — 进入答题模式，可分多条语音/文字作答，说完发「回答完毕」一次性提交
+> `重置` — 清除对话上下文，重新开始
+> `菜单` — 显示本说明"""
+reset = """**{name}** · 上下文已重置
+> 支持语音和文字提问，可以继续问我。
+>
+> **上下文：** 0 / {max_context} 轮，聊满后可发「重置」清空
+> **指令：** 发「菜单」查看全部用法"""
+max_context = 10
