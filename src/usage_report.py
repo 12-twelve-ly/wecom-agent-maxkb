@@ -5,14 +5,14 @@ MaxKB 的 message_tokens / answer_tokens 是本地估算值（中文按 UTF-8 �
 比 DeepSeek 真实计费值大约放大 3 倍，因此本脚本统一乘以 0.3 做校准。
 
 用法：
-    python usage_report.py                          # 最近 7 天汇总
-    python usage_report.py --days 30                # 最近 30 天汇总
-    python usage_report.py --all                    # 全部历史汇总
-    python usage_report.py --detail --days 7        # 最近 7 天逐条明细
-    python usage_report.py --detail --all --out usage.csv  # 全部明细导出 CSV
-    python usage_report.py --all-apps --detail      # 不按应用过滤（慎用）
+    python src/usage_report.py                          # 最近 7 天汇总
+    python src/usage_report.py --days 30                # 最近 30 天汇总
+    python src/usage_report.py --all                    # 全部历史汇总
+    python src/usage_report.py --detail --days 7        # 最近 7 天逐条明细
+    python src/usage_report.py --detail --all --out usage.csv  # 全部明细导出 CSV
+    python src/usage_report.py --all-apps --detail      # 不按应用过滤（慎用）
 
-默认按 .env 里的 MAXKB_ACCESS_TOKEN 反查应用 ID，只统计本机器人应用。
+默认按 config/config.toml 或 config/.env 里的凭据反查应用 ID，只统计本机器人应用。
 """
 import argparse
 import csv
@@ -25,29 +25,13 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from config import ConfigError, load_config
-
-ENV_FILE = Path(__file__).parent / ".env"
-
-
-def _read_env_value(key: str) -> str:
-    """从脚本同目录 .env 读取配置（不导入 bot，避免触发其启动校验）"""
-    if ENV_FILE.exists():
-        for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            if k.strip() == key:
-                return v.strip()
-    return os.environ.get(key, "")
-
+from config import ConfigError, load_config, read_env_value
 
 CORRECTION = 0.3  # 估算值 → 真实值 的校准系数
 
-CONTAINER = _read_env_value("MAXKB_DB_CONTAINER") or "maxkb"
-DB_USER = _read_env_value("MAXKB_DB_USER") or "root"
-DB_NAME = _read_env_value("MAXKB_DB_NAME") or "maxkb"
+CONTAINER = read_env_value("MAXKB_DB_CONTAINER") or "maxkb"
+DB_USER = read_env_value("MAXKB_DB_USER") or "root"
+DB_NAME = read_env_value("MAXKB_DB_NAME") or "maxkb"
 DISPLAY_TZ = "Asia/Shanghai"  # 导出时间的展示时区
 DETAIL_HEADER = ["时间", "用户", "提问内容", "返回内容", "输入token", "输出token", "总消耗token"]
 
@@ -99,7 +83,7 @@ def resolve_application_id() -> str | None:
             secrets=(key,),
         )
     else:
-        token = maxkb.access_token if maxkb is not None else _read_env_value("MAXKB_ACCESS_TOKEN")
+        token = maxkb.access_token if maxkb is not None else read_env_value("MAXKB_ACCESS_TOKEN")
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", token or ""):
             return None
         rows = query_csv(

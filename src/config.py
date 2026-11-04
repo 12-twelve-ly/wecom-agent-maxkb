@@ -13,7 +13,7 @@ try:
 except ModuleNotFoundError:  # Python 3.10
     import tomli as tomllib  # type: ignore[no-redef]
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent  # 项目根目录（src/ 的上一级）
 
 
 class ConfigError(Exception):
@@ -52,6 +52,7 @@ class BotConfig:
 class ServerConfig:
     state_dir: Path
     log_level: str = "INFO"
+    log_file: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -122,9 +123,9 @@ _VALID_AUTH_MODES = {"share_token", "api_key"}
 
 
 def load_env(base_dir: Path | None = None) -> None:
-    """把同目录 .env 读入环境变量；真实环境变量优先。"""
+    """把 config/.env 读入环境变量；真实环境变量优先。"""
     base = Path(base_dir) if base_dir else BASE_DIR
-    env_file = base / ".env"
+    env_file = base / "config" / ".env"
     if not env_file.exists():
         return
     for line in env_file.read_text(encoding="utf-8").splitlines():
@@ -237,15 +238,20 @@ def _legacy_config(base_dir: Path) -> AppConfig:
         "reset": read_env_value("BOT_RESET", base_dir),
         "max_context": read_env_value("BOT_MAX_CONTEXT", base_dir) or LEGACY_PERSONA.max_context,
     }
+    state_dir = base_dir / "logs" / "sessions"
     return AppConfig(
-        server=ServerConfig(state_dir=base_dir, log_level="INFO"),
+        server=ServerConfig(
+            state_dir=state_dir,
+            log_level="INFO",
+            log_file=base_dir / "logs" / "bot.log",
+        ),
         bot=BotConfig(
             name="default",
             wecom_bot_id=read_env_value("WECOM_BOT_ID", base_dir),
             wecom_secret=read_env_value("WECOM_SECRET", base_dir),
             maxkb=maxkb,
             persona=_persona_from(persona_raw, "legacy"),
-            state_file=base_dir / "conversations.json",
+            state_file=state_dir / "conversations.json",
         ),
         source_path=None,
     )
@@ -259,13 +265,17 @@ def _toml_config(config_path: Path, base_dir: Path) -> AppConfig:
     data = _expand(data, base_dir)
 
     server_raw = data.get("server") or {}
-    state_dir = Path(str(server_raw.get("state_dir", "data")))
+    state_dir = Path(str(server_raw.get("state_dir", "logs/sessions")))
     if not state_dir.is_absolute():
         state_dir = base_dir / state_dir
     state_dir = state_dir.resolve()
     log_level = str(server_raw.get("log_level", "INFO")).upper()
     if log_level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
         raise ConfigError("server.log_level 只能是 DEBUG/INFO/WARNING/ERROR/CRITICAL")
+    log_file = Path(str(server_raw.get("log_file", "logs/bot.log")))
+    if not log_file.is_absolute():
+        log_file = base_dir / log_file
+    log_file = log_file.resolve()
 
     bots = data.get("bot")
     if not isinstance(bots, list) or not bots:
@@ -302,7 +312,7 @@ def _toml_config(config_path: Path, base_dir: Path) -> AppConfig:
         raise ConfigError(f"bot[{name}].state_file 必须位于 server.state_dir 目录内")
 
     return AppConfig(
-        server=ServerConfig(state_dir=state_dir, log_level=log_level),
+        server=ServerConfig(state_dir=state_dir, log_level=log_level, log_file=log_file),
         bot=BotConfig(
             name=name,
             wecom_bot_id=wecom_bot_id,
@@ -327,7 +337,7 @@ def load_config(path: str | None = None, base_dir: Path | None = None) -> AppCon
         if not config_path.exists():
             raise ConfigError(f"配置文件不存在: {config_path}")
     else:
-        candidate = base / "config.toml"
+        candidate = base / "config" / "config.toml"
         config_path = candidate if candidate.exists() else None
 
     if config_path is None:

@@ -1,5 +1,8 @@
-.env
-config.toml
+config/.env
+config/config.toml
+logs/*.log
+logs/*.log.*
+logs/sessions/
 conversations.json
 conversations.json.tmp
 *.conversations.json

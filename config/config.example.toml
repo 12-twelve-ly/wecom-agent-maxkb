@@ -2,7 +2,8 @@
 # 当前版本只支持一个 enabled bot；多机器人将在后续版本支持。
 
 [server]
-state_dir = "data"
+state_dir = "logs/sessions"
+log_file = "logs/bot.log"
 log_level = "INFO"
 
 [[bot]]

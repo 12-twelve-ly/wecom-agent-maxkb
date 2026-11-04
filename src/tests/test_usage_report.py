@@ -59,7 +59,7 @@ class UsageReportTest(unittest.TestCase):
 
     def test_resolve_application_id_rejects_unsafe_token(self):
         with mock.patch.object(usage_report, "_configured_maxkb", return_value=None):
-            with mock.patch.object(usage_report, "_read_env_value", return_value="x' or 1=1 --"):
+            with mock.patch.object(usage_report, "read_env_value", return_value="x' or 1=1 --"):
                 with mock.patch.object(usage_report, "query_csv") as query:
                     self.assertIsNone(usage_report.resolve_application_id())
                     query.assert_not_called()

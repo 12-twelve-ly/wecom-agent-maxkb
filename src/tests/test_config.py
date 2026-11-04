@@ -14,7 +14,8 @@ import config  # noqa: E402
 
 SERVER_TEMPLATE = """
 [server]
-state_dir = "data"
+state_dir = "logs/sessions"
+log_file = "logs/bot.log"
 log_level = "debug"
 """
 
@@ -54,7 +55,8 @@ class ConfigTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def _write(self, content: str) -> Path:
-        path = self.base / "config.toml"
+        path = self.base / "config" / "config.toml"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         return path
 
@@ -72,7 +74,11 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(cfg.bot.persona.max_context, 5)
         self.assertEqual(
             cfg.bot.state_file.resolve(),
-            (self.base / "data" / "doris.conversations.json").resolve(),
+            (self.base / "logs" / "sessions" / "doris.conversations.json").resolve(),
+        )
+        self.assertEqual(
+            cfg.server.log_file.resolve(),
+            (self.base / "logs" / "bot.log").resolve(),
         )
         self.assertEqual(config.render("菜单 {name}/{max_context}", cfg.bot.persona), "菜单 测试助手/5")
 
@@ -162,7 +168,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(cfg.bot.wecom_bot_id, "legacy-bot")
         self.assertEqual(cfg.bot.maxkb.access_token, "legacy-token")
         self.assertEqual(cfg.bot.persona.display_name, "Doris 小助手")
-        self.assertEqual(cfg.bot.state_file, self.base / "conversations.json")
+        self.assertEqual(cfg.bot.state_file, self.base / "logs" / "sessions" / "conversations.json")
 
     def test_legacy_missing_config_is_error(self):
         with mock.patch.dict(os.environ, {}, clear=True):

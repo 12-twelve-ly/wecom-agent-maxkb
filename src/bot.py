@@ -12,6 +12,7 @@ import os
 import shutil
 import sys
 import time
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
@@ -30,7 +31,8 @@ CONFIG: AppConfig | None = None
 PERSONA: Persona = LEGACY_PERSONA
 MAXKB_CLIENT: MaxKBClient | None = None
 
-CONV_FILE = Path(__file__).parent / "conversations.json"
+BASE_DIR = Path(__file__).resolve().parent.parent
+CONV_FILE = BASE_DIR / "logs" / "sessions" / "conversations.json"
 
 
 def _load_conversations(path: Path) -> dict:
@@ -374,8 +376,8 @@ def _harden_early(base: Path, config_path: str | None) -> None:
     """在加载配置前收紧 .env / 配置文件权限（POSIX；Windows 需 icacls）。"""
     if os.name == "nt":
         return
-    targets = [base / ".env"]
-    targets.append(Path(config_path) if config_path else base / "config.toml")
+    targets = [base / "config" / ".env"]
+    targets.append(Path(config_path) if config_path else base / "config" / "config.toml")
     for path in targets:
         if not path.is_absolute():
             path = base / path
@@ -390,8 +392,8 @@ def _harden_permissions(config: AppConfig) -> None:
     """POSIX 下收紧配置/状态文件权限；Windows 需用 icacls 手工处理"""
     if os.name == "nt":
         return
-    legacy_file = Path(__file__).parent / "conversations.json"
-    paths = [Path(__file__).parent / ".env", legacy_file, CONV_FILE]
+    legacy_file = BASE_DIR / "conversations.json"
+    paths = [BASE_DIR / "config" / ".env", legacy_file, CONV_FILE]
     if config.source_path is not None:
         paths.append(config.source_path)
     for path in paths:
@@ -400,11 +402,32 @@ def _harden_permissions(config: AppConfig) -> None:
                 os.chmod(path, 0o600)
         except OSError as e:
             log.warning("收紧 %s 权限失败: %s", path.name, e)
+    for directory in (config.server.state_dir, BASE_DIR / "config"):
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+            os.chmod(directory, 0o700)
+        except OSError as e:
+            log.warning("收紧目录权限失败 %s: %s", directory, e)
+
+
+def _setup_file_logging(config: AppConfig) -> None:
+    """把日志同时写入 logs/bot.log，按 5MB 轮转保留 3 份。"""
+    log_file = config.server.log_file
+    if log_file is None:
+        return
+    for handler in logging.getLogger().handlers:
+        if getattr(handler, "_wecom_maxkb_file", False):
+            return
     try:
-        config.server.state_dir.mkdir(parents=True, exist_ok=True)
-        os.chmod(config.server.state_dir, 0o700)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        handler = RotatingFileHandler(
+            log_file, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+        )
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        handler._wecom_maxkb_file = True  # type: ignore[attr-defined]
+        logging.getLogger().addHandler(handler)
     except OSError as e:
-        log.warning("收紧状态目录权限失败: %s", e)
+        log.warning("初始化日志文件失败: %s", e)
 
 
 def init_runtime(config: AppConfig) -> None:
@@ -414,13 +437,14 @@ def init_runtime(config: AppConfig) -> None:
     PERSONA = config.bot.persona
     MAXKB_CLIENT = MaxKBClient(config.bot.maxkb)
     CONV_FILE = config.bot.state_file
-    _migrate_state(Path(__file__).parent / "conversations.json")
+    _migrate_state(BASE_DIR / "conversations.json")
     try:
         CONV_FILE.parent.mkdir(parents=True, exist_ok=True)
     except OSError as e:
         log.warning("创建状态目录失败: %s", e)
     _conversations = _load_conversations(CONV_FILE)
     logging.getLogger().setLevel(getattr(logging, config.server.log_level, logging.INFO))
+    _setup_file_logging(config)
     _harden_permissions(config)
 
 
@@ -454,7 +478,7 @@ def main() -> None:
     parser.add_argument("--check", action="store_true", help="只校验配置并测试 MaxKB 连通性，不启动机器人")
     args = parser.parse_args()
 
-    _harden_early(Path(__file__).parent, args.config)
+    _harden_early(BASE_DIR, args.config)
 
     try:
         config = load_config(args.config)
