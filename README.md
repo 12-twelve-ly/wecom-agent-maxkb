@@ -12,6 +12,7 @@
 wecom-agent-maxkb/
 ├── README.md          ← 你在这里
 ├── start.bat          ← Windows 快捷启动
+├── export_usage.bat   ← Windows 一键导出问答明细表
 ├── config/            配置：样例、.env、config.toml
 ├── logs/              日志与会话：bot.log、sessions/
 └── src/               主代码、测试、部署文件
@@ -258,7 +259,7 @@ systemctl restart wecom-agent-maxkb
 - 第一次使用 `config/config.toml` 启动时，如果目标文件不存在，会自动把根目录旧的 `conversations.json` 复制过去。
 - 用户发「重置」只清本地映射，不删除 MaxKB 服务端聊天记录。
 - 会话失效（token 过期 / 对话不存在）会自动重建并重试一次。
-- 运行日志写入 `logs/bot.log`，按 5MB 轮转，保留 3 份。
+- 运行日志写入 `logs/bot.log`，按 5MB 轮转，保留 3 份。日志只记录连接、收到消息（仅字数）、重置和异常，**不记录问答正文与 token**——完整问答与 token 消耗见 [第 9 节](#9-用量统计与问答明细)。
 
 ---
 
@@ -293,6 +294,25 @@ python src/usage_report.py --detail --all --out usage.csv
 
 # 导出 MaxKB 原始估算值（默认 ×0.3 校准）
 python src/usage_report.py --detail --all --raw --out usage_raw.csv
+```
+
+### 一键导出到表格（Windows）
+
+双击项目根目录的 `export_usage.bat`，会把当前应用的全部历史问答导出到 `logs/usage_records.csv`：
+
+```text
+时间, 用户, 提问内容, 返回内容, 输入token, 输出token, 总消耗token
+```
+
+- 编码为 UTF-8 BOM，Excel 直接打开不乱码。
+- 每次都是**全量覆盖**导出，历史记录保存在 MaxKB 数据库里，不会丢失，也不会产生重复行。
+- token 只能从数据库读取（MaxKB 流式应答不含 token），因此导出的是运行脚本时已完成记录。
+- 文件名匹配 `.gitignore` 的 `usage*.csv`，含问答正文，不会被提交到 git。
+
+Linux 下等价命令：
+
+```bash
+python src/usage_report.py --detail --all --out logs/usage_records.csv
 ```
 
 明细列：
