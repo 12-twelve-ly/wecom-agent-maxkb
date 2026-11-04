@@ -6,8 +6,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/wecom-coze-bot
-ExecStart=/home/ubuntu/wecom-coze-bot/.venv/bin/python /home/ubuntu/wecom-coze-bot/bot.py
+WorkingDirectory=/home/ubuntu/wecom-agent-maxkb
+ExecStart=/home/ubuntu/wecom-agent-maxkb/.venv/bin/python /home/ubuntu/wecom-agent-maxkb/bot.py --config /home/ubuntu/wecom-agent-maxkb/config.toml
 Restart=always
 RestartSec=5
 UMask=0077

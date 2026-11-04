@@ -182,7 +182,7 @@ python bot.py
 
 看到日志 `已连接企微 bot=mybot，等待消息中...` 即启动成功。
 
-Windows 也可以双击 `启动.bat`；存在 `config.toml` 时会自动传入 `--config`。
+Windows 也可以双击 `deploy/start.bat`；存在 `config.toml` 时会自动传入 `--config`。
 
 ### 4.6 验证
 
@@ -247,7 +247,7 @@ max_context = 10
 
 ```bash
 # Linux / systemd
-systemctl restart wecom-coze-bot
+systemctl restart wecom-agent-maxkb
 # Windows
 # 关闭窗口后重新运行 启动.bat
 ```
@@ -314,7 +314,7 @@ python usage_report.py --detail --all --raw --out usage_raw.csv
 
 ## 10. Linux systemd 部署（可选）
 
-项目自带 `wecom-coze-bot.service`，按实际路径修改后：
+项目自带 `deploy/wecom-agent-maxkb.service`，按实际路径修改后：
 
 ```ini
 [Unit]
@@ -339,8 +339,8 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now wecom-coze-bot
-journalctl -u wecom-coze-bot -f
+sudo systemctl enable --now wecom-agent-maxkb
+journalctl -u wecom-agent-maxkb -f
 ```
 
 ---
@@ -363,9 +363,9 @@ journalctl -u wecom-coze-bot -f
 
 ```bash
 # Linux
-journalctl -u wecom-coze-bot -f
+journalctl -u wecom-agent-maxkb -f
 # Windows
-# 直接看 启动.bat 的窗口输出
+# 直接看 deploy/start.bat 的窗口输出
 ```
 
 ---
@@ -408,13 +408,18 @@ python bot.py --check --config config.example.toml
 项目结构：
 
 ```text
-bot.py              入口：配置加载、状态迁移、企微消息处理、--check
-config.py           config.toml/.env 解析、校验、persona 文案
-maxkb_client.py     MaxKB 认证、SSE、重试、会话重建
-usage_report.py     用量汇总与问答明细导出
-config.example.toml 配置样例
-.env.example        密钥样例
-tests/              配置、MaxKB 客户端、运行时、报表测试
+bot.py                入口：配置加载、状态迁移、企微消息处理、--check
+config.py             config.toml/.env 解析、校验、persona 文案
+maxkb_client.py       MaxKB 认证、SSE、重试、会话重建
+usage_report.py       用量汇总与问答明细导出
+config.example.toml   配置样例
+.env.example          密钥样例
+deploy/
+  wecom-agent-maxkb.service  systemd 单元
+  start.bat            Windows 启动脚本
+tests/                配置、MaxKB 客户端、运行时、报表测试
+data/                 运行时会话（自动创建，git 忽略）
+.env / config.toml    本地密钥与配置（git 忽略）
 ```
 
 ---

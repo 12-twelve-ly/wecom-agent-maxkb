@@ -58,10 +58,11 @@ class UsageReportTest(unittest.TestCase):
         self.assertTrue(out[3].startswith("'@"))
 
     def test_resolve_application_id_rejects_unsafe_token(self):
-        with mock.patch.object(usage_report, "_read_env_value", return_value="x' or 1=1 --"):
-            with mock.patch.object(usage_report, "query_csv") as query:
-                self.assertIsNone(usage_report.resolve_application_id())
-                query.assert_not_called()
+        with mock.patch.object(usage_report, "_configured_maxkb", return_value=None):
+            with mock.patch.object(usage_report, "_read_env_value", return_value="x' or 1=1 --"):
+                with mock.patch.object(usage_report, "query_csv") as query:
+                    self.assertIsNone(usage_report.resolve_application_id())
+                    query.assert_not_called()
 
     def test_build_where_combines_time_and_app(self):
         where = usage_report.build_where(Args(), "00000000-0000-0000-0000-000000000000")
